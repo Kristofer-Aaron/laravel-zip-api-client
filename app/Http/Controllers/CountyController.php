@@ -2,64 +2,39 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\County;
 
 class CountyController extends Controller
 {
+    /* =====================================================
+     | API METHODS (JSON)
+     |=====================================================*/
+
     /**
-     * @api {get} /counties Get all counties
-     * @apiName GetCounties
-     * @apiGroup County
-     * @apiDescription Returns all counties.
-     *
-     * @apiSuccess (200) {Object[]} counties List of counties
-     * @apiSuccess (200) {Number} counties.id County ID
-     * @apiSuccess (200) {String} counties.name County name
+     * GET /api/counties
      */
     public function index()
     {
-        $counties = County::get();
-        return response()->json($counties, 200);
+        return response()->json(County::all(), 200);
     }
 
     /**
-     * @api {get} /counties/:id Get a single county
-     * @apiName GetCounty
-     * @apiGroup County
-     * @apiDescription Returns a county by its ID.
-     *
-     * @apiParam {Number} id County ID
-     *
-     * @apiSuccess (200) {Number} id County ID
-     * @apiSuccess (200) {String} name County name
-     *
-     * @apiError (404) CountyNotFound County with id not found
+     * GET /api/counties/{id}
      */
     public function show(int $id)
     {
         $county = County::find($id);
-    
+
         if (!$county) {
             return response()->json(['message' => 'County with id not found'], 404);
         }
-    
+
         return response()->json($county, 200);
     }
 
     /**
-     * @api {post} /counties Create a new county
-     * @apiName CreateCounty
-     * @apiGroup County
-     * @apiDescription Creates a new county.
-     *
-     * @apiBody {String} name County name
-     *
-     * @apiSuccess (201) {Number} id County ID
-     * @apiSuccess (201) {String} name County name
-     *
-     * @apiError (422) ValidationError Returned if validation fails
+     * POST /api/counties
      */
     public function store(Request $request)
     {
@@ -67,28 +42,13 @@ class CountyController extends Controller
             'name' => 'required|string|max:255|unique:counties,name',
         ]);
 
-        $county = County::create([
-            'name' => $data['name'],
-        ]);
+        $county = County::create($data);
 
         return response()->json($county, 201);
     }
 
     /**
-     * @api {put} /counties/:id Update a county
-     * @apiName UpdateCounty
-     * @apiGroup County
-     * @apiDescription Updates an existing county.
-     *
-     * @apiParam {Number} id County ID
-     *
-     * @apiBody {String} name County name
-     *
-     * @apiSuccess (200) {Number} id County ID
-     * @apiSuccess (200) {String} name County name
-     *
-     * @apiError (404) CountyNotFound County with id not found
-     * @apiError (422) ValidationError Returned if validation fails
+     * PUT /api/counties/{id}
      */
     public function update(Request $request, int $id)
     {
@@ -101,25 +61,14 @@ class CountyController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
         ]);
-        
-        $county->update([
-            'name' => $data['name'], 
-        ]);
-        
+
+        $county->update($data);
+
         return response()->json($county, 200);
     }
 
     /**
-     * @api {delete} /counties/:id Delete a county
-     * @apiName DeleteCounty
-     * @apiGroup County
-     * @apiDescription Deletes a county by ID.
-     *
-     * @apiParam {Number} id County ID
-     *
-     * @apiSuccess (204) NoContent County deleted successfully
-     *
-     * @apiError (404) CountyNotFound County with id not found
+     * DELETE /api/counties/{id}
      */
     public function destroy(int $id)
     {
@@ -130,6 +79,72 @@ class CountyController extends Controller
         }
 
         $county->delete();
+
         return response()->json(null, 204);
+    }
+
+    /* =====================================================
+     | WEB METHODS (BLADE VIEWS)
+     |=====================================================*/
+
+    /**
+     * GET /counties
+     */
+    public function webIndex()
+    {
+        $counties = County::withCount('cities')
+            ->orderBy('name')
+            ->paginate(25);
+
+        return view('counties-view', [
+            'counties' => $counties,
+        ]);
+    }
+
+    /**
+     * POST /counties
+     */
+    public function webStore(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255|unique:counties,name',
+        ]);
+
+        County::create($data);
+
+        return redirect()
+            ->route('counties-view.index')
+            ->with('message', 'County created successfully.');
+    }
+
+    /**
+     * PUT /counties/{id}
+     */
+    public function webUpdate(Request $request, int $id)
+    {
+        $county = County::findOrFail($id);
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255|unique:counties,name,' . $id,
+        ]);
+
+        $county->update($data);
+
+        return redirect()
+            ->route('counties-view.index')
+            ->with('message', 'County updated successfully.');
+    }
+
+    /**
+     * DELETE /counties/{id}
+     */
+    public function webDestroy(int $id)
+    {
+        $county = County::findOrFail($id);
+        $county->delete();
+
+        return redirect()
+            ->route('counties-view.index')
+            ->with('message', 'County deleted successfully.');
     }
 }

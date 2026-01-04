@@ -36,10 +36,36 @@ Route::middleware(['auth'])->group(function () {
         )
         ->name('two-factor.show');
 
+    // Cities and Counties management
 
-    Route::get('/cities', function () {
-        return view('cities.index');
-    })->name('cities.index');
-    //Route::get('/cities', [CityController::class, 'index'])->name('cities.index');
-    //Route::get('/counties', [CountyController::class, 'index'])->name('counties.index');
+    // Cities
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/cities', [CityController::class, 'webIndex'])
+        ->name('cities-view.index');
+
+    Route::post('/cities', [CityController::class, 'webStore'])
+        ->name('cities-view.store');
+
+    Route::put('/cities/{id}', [CityController::class, 'webUpdate'])
+        ->name('cities-view.update');
+
+    Route::delete('/cities/{id}', [CityController::class, 'webDestroy'])
+        ->name('cities-view.destroy');
+});
+    // Counties
+    
+Route::middleware(['auth'])->group(function () {
+    Route::get('/counties', [CountyController::class, 'webIndex'])
+        ->name('counties-view.index');
+
+    Route::post('/counties', [CountyController::class, 'webStore'])
+        ->name('counties-view.store');
+
+    Route::put('/counties/{id}', [CountyController::class, 'webUpdate'])
+        ->name('counties-view.update');
+
+    Route::delete('/counties/{id}', [CountyController::class, 'webDestroy'])
+        ->name('counties-view.destroy');
+});
 });
