@@ -28,25 +28,40 @@
     @endif
 
     <!-- Search & County Filter -->
-    <div class="card mb-4 shadow-sm rounded-lg">
-        <div class="card-body">
-            <form method="GET" action="{{ route('cities-view.index') }}" class="row g-3">
-                <div class="col-md-6">
-                    <input type="text" name="search" value="{{ request('search') }}" class="form-control rounded-lg" placeholder="{{ __('Search by name or zip...') }}">
-                </div>
-                <div class="col-md-6">
-                    <select name="county_filter" class="form-select rounded-lg">
-                        <option value="">{{ __('All Counties') }}</option>
-                        @foreach ($counties as $county)
-                            <option value="{{ $county->id }}" {{ request('county_filter') == $county->id ? 'selected' : '' }}>
-                                {{ $county->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-            </form>
-        </div>
+<div class="card mb-4 shadow-sm rounded-lg">
+    <div class="card-body">
+        <form method="GET" action="{{ route('cities-view.index') }}" class="row g-3" id="filter-form">
+            <div class="col-md-6">
+                <input 
+                    type="text" 
+                    name="search" 
+                    value="{{ request('search') }}" 
+                    class="form-control rounded-lg" 
+                    placeholder="{{ __('Search by name or zip...') }}"
+                    oninput="document.getElementById('filter-form').submit()"
+                >
+            </div>
+            <div class="col-md-6">
+                <select 
+                    name="county_filter" 
+                    class="form-select rounded-lg" 
+                    onchange="document.getElementById('filter-form').submit()"
+                >
+                    <option value="">{{ __('All Counties') }}</option>
+                    @foreach ($counties as $county)
+                        <option 
+                            value="{{ $county->id }}" 
+                            {{ request('county_filter') == $county->id ? 'selected' : '' }}
+                        >
+                            {{ $county->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </form>
     </div>
+</div>
+
 
     <!-- Alphabetical Filter -->
     <div class="card mb-4 shadow-sm rounded-lg">
