@@ -19,6 +19,18 @@
         </div>
     </div>
 
+    <div class="mb-3 d-flex gap-2">
+        <form action="{{ route('counties-view.export') }}" method="GET">
+            <input type="hidden" name="search" value="{{ request('search') }}">
+            <button type="submit" name="type" value="csv" class="btn btn-outline-secondary">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+            </button>
+            <button type="submit" name="type" value="pdf" class="btn btn-outline-secondary" disabled>
+                <i class="bi bi-file-earmark-pdf"></i> Export PDF
+            </button>
+        </form>
+    </div>
+
     <!-- Flash Messages -->
     @if (session('message'))
         <div class="alert alert-success mb-4">{{ session('message') }}</div>

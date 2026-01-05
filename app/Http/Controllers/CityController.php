@@ -6,6 +6,10 @@ use App\Models\City;
 use App\Models\County;
 use Illuminate\Http\Request;
 
+// PDF export dependencies
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 /**
  * @apiDefine CityGroup Cities
  * @apiDescription API endpoints for managing cities and their counties.
@@ -136,6 +140,71 @@ class CityController extends Controller
 
         $city->delete();
         return response()->json(null, 204);
+    }
+
+    // Controller
+    public function export(Request $request)
+    {
+        $query = City::with('county');
+
+        // Filters
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('zip', 'like', "%{$search}%");
+            });
+        }
+
+        if ($countyId = $request->input('county_filter')) {
+            $query->where('county_id', $countyId);
+        }
+
+        if ($letter = $request->input('letter')) {
+            $query->where('name', 'like', strtoupper($letter) . '%');
+        }
+
+        $cities = $query->orderBy('name')->get();
+
+        // Decide export type
+        if ($request->input('type') === 'pdf') {
+            return $this->exportPDF($cities);   // private helper
+        } else {
+            return $this->exportCSV($cities);   // private helper
+        }
+    }
+
+    // Private helpers
+    private function exportCSV($cities)
+    {
+        $filename = 'cities.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8-hungarian-ci',
+            'Content-Disposition' => "attachment; filename={$filename}",
+        ];
+
+        $callback = function () use ($cities) {
+            $handle = fopen('php://output', 'w');
+            // Add UTF-8 BOM for proper encoding recognition
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fputcsv($handle, ['Zip', 'Name', 'County']); // Header row
+            foreach ($cities as $city) {
+                fputcsv($handle, [$city->zip, $city->name, $city->county->name]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    private function exportPDF($cities)
+    {
+        // Make sure $cities is a collection
+        if ($cities instanceof \Illuminate\Database\Eloquent\Builder) {
+            $cities = $cities->get();
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.cities-pdf', compact('cities'));
+        return $pdf->download('cities.pdf');
     }
 
     // -------------------

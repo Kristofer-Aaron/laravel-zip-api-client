@@ -52,6 +52,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::delete('/cities/{id}', [CityController::class, 'webDestroy'])
         ->name('cities-view.destroy');
+
+    Route::get('/cities/export', [CityController::class, 'export'])
+        ->name('cities-view.export');
 });
     // Counties
     
@@ -67,5 +70,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::delete('/counties/{id}', [CountyController::class, 'webDestroy'])
         ->name('counties-view.destroy');
+
+    Route::get('/counties/export', [CountyController::class, 'export'])
+        ->name('counties-view.export');
 });
 });

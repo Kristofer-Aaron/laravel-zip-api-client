@@ -111,6 +111,50 @@ class CountyController extends Controller
         return response()->json(null, 204);
     }
 
+    // Export Counties
+    public function export(Request $request)
+    {
+        $counties = County::withCount('cities')->orderBy('name')->get();
+
+        $type = $request->input('type', 'csv'); // default CSV
+
+        if ($type === 'pdf') {
+            return $this->exportCountiesPDF($counties);
+        } else {
+            return $this->exportCountiesCSV($counties);
+        }
+    }
+
+    // CSV
+    private function exportCountiesCSV($counties)
+    {
+        $filename = 'counties.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => "attachment; filename={$filename}",
+        ];
+
+        $callback = function () use ($counties) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+            fputcsv($handle, ['County', 'Cities Count']);
+            foreach ($counties as $county) {
+                fputcsv($handle, [$county->name, $county->cities_count]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    // PDF
+    private function exportCountiesPDF($counties)
+    {
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.counties-pdf', compact('counties'))
+            ->download('counties.pdf');
+    }
+
+    
     /* =====================================================
      | WEB METHODS (BLADE VIEWS)
      |=====================================================*/

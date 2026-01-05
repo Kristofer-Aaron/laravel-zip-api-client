@@ -17,6 +17,22 @@
                 <i class="bi bi-plus"></i> {{ __('Add City') }}
             </button>
         </div>
+        
+        <div class="mb-3 d-flex gap-2">
+            <form action="{{ route('cities-view.export') }}" method="GET">
+                <input type="hidden" name="search" value="{{ request('search') }}">
+                <input type="hidden" name="county_filter" value="{{ request('county_filter') }}">
+                <input type="hidden" name="letter" value="{{ request('letter') }}">
+                <button type="submit" name="type" value="csv" class="btn btn-outline-secondary">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+                </button>
+                <button type="submit" name="type" value="pdf" class="btn btn-outline-secondary" disabled>
+                    <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                </button>
+            </form>
+        </div>
+
+
     </div>
 
     <!-- Flash Messages -->
