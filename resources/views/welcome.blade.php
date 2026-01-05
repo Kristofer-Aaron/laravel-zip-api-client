@@ -92,6 +92,14 @@
             </div>
         </div>
     </section>
+    @auth
+        <div class="text-center mt-3 small text-body-secondary">
+            <span>{{ __("Go to") }}</span>
+            <a href="{{ route('dashboard') }}" class="link-primary ms-1">
+                {{ __('Dashboard') }}
+            </a>
+        </div>
+    @endauth
 </main>
 
 

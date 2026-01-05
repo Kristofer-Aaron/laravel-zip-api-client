@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\County;
 
+/**
+ * @apiDefine CountyGroup Counties
+ * @apiDescription API endpoints for managing counties and their cities.
+ */
 class CountyController extends Controller
 {
     /* =====================================================
@@ -12,7 +16,12 @@ class CountyController extends Controller
      |=====================================================*/
 
     /**
-     * GET /api/counties
+     * @api {get} /api/counties List Counties
+     * @apiName GetCounties
+     * @apiGroup CountyGroup
+     * @apiSuccess {Object[]} counties List of counties
+     * @apiSuccess {Number} counties.id County ID
+     * @apiSuccess {String} counties.name County name
      */
     public function index()
     {
@@ -20,7 +29,13 @@ class CountyController extends Controller
     }
 
     /**
-     * GET /api/counties/{id}
+     * @api {get} /api/counties/:id Get County
+     * @apiName GetCounty
+     * @apiGroup CountyGroup
+     * @apiParam {Number} id County ID
+     * @apiSuccess {Number} id County ID
+     * @apiSuccess {String} name County name
+     * @apiError {String} message Error when not found
      */
     public function show(int $id)
     {
@@ -34,7 +49,11 @@ class CountyController extends Controller
     }
 
     /**
-     * POST /api/counties
+     * @api {post} /api/counties Create County
+     * @apiName CreateCounty
+     * @apiGroup CountyGroup
+     * @apiParam {String} name County name (unique)
+     * @apiSuccess (Created 201) {Number} id Created county ID
      */
     public function store(Request $request)
     {
@@ -48,7 +67,12 @@ class CountyController extends Controller
     }
 
     /**
-     * PUT /api/counties/{id}
+     * @api {put} /api/counties/:id Update County
+     * @apiName UpdateCounty
+     * @apiGroup CountyGroup
+     * @apiParam {Number} id County ID
+     * @apiParam {String} name County name
+     * @apiSuccess {Object} county Updated county object
      */
     public function update(Request $request, int $id)
     {
@@ -68,7 +92,11 @@ class CountyController extends Controller
     }
 
     /**
-     * DELETE /api/counties/{id}
+     * @api {delete} /api/counties/:id Delete County
+     * @apiName DeleteCounty
+     * @apiGroup CountyGroup
+     * @apiParam {Number} id County ID
+     * @apiSuccess (No Content 204) - No response body
      */
     public function destroy(int $id)
     {

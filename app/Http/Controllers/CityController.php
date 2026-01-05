@@ -6,16 +6,46 @@ use App\Models\City;
 use App\Models\County;
 use Illuminate\Http\Request;
 
+/**
+ * @apiDefine CityGroup Cities
+ * @apiDescription API endpoints for managing cities and their counties.
+ */
 class CityController extends Controller
 {
     // -------------------
     // API Methods (JSON)
     // -------------------
+    /**
+     * @api {get} /api/cities List Cities
+     * @apiName GetCities
+     * @apiGroup CityGroup
+     * @apiSuccess {Object[]} cities List of cities
+     * @apiSuccess {Number} cities.id City unique ID
+     * @apiSuccess {String} cities.zip Postal code
+     * @apiSuccess {String} cities.name City name
+     * @apiSuccess {Object} cities.county Associated county object
+     * @apiSuccessExample {json} Success-Response:
+     * HTTP/1.1 200 OK
+     * [
+     *   {"id":1,"zip":"1000","name":"Sample","county":{...}}
+     * ]
+     */
     public function index()
     {
         return response()->json(City::with('county')->get(), 200);
     }
 
+    /**
+     * @api {get} /api/cities/:id Get City
+     * @apiName GetCity
+     * @apiGroup CityGroup
+     * @apiParam {Number} id City's unique ID.
+     * @apiSuccess {Number} id City unique ID
+     * @apiSuccess {String} zip Postal code
+     * @apiSuccess {String} name City name
+     * @apiSuccess {Object} county Associated county
+     * @apiError {String} message Error message when not found
+     */
     public function show(int $id)
     {
         $city = City::with('county')->find($id);
@@ -25,6 +55,18 @@ class CityController extends Controller
         return response()->json($city, 200);
     }
 
+    /**
+     * @api {post} /api/cities Create City
+     * @apiName CreateCity
+     * @apiGroup CityGroup
+     * @apiParam {String} zip Postal code (4 digits)
+     * @apiParam {String} name City name
+     * @apiParam {String} county County name (will be created if missing)
+     * @apiSuccess (Created 201) {Number} id Created city ID
+     * @apiSuccessExample {json} Created-Response:
+     * HTTP/1.1 201 Created
+     * {"id":123,"zip":"1000","name":"New City","county":{...}}
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -44,6 +86,16 @@ class CityController extends Controller
         return response()->json($city->load('county'), 201);
     }
 
+    /**
+     * @api {put} /api/cities/:id Update City
+     * @apiName UpdateCity
+     * @apiGroup CityGroup
+     * @apiParam {Number} id City ID
+     * @apiParam {String} zip Postal code (4 digits)
+     * @apiParam {String} name City name
+     * @apiParam {String} county County name
+     * @apiSuccess {Object} city Updated city object
+     */
     public function update(Request $request, int $id)
     {
         $city = City::with('county')->find($id);
@@ -68,6 +120,13 @@ class CityController extends Controller
         return response()->json($city->load('county'), 200);
     }
 
+    /**
+     * @api {delete} /api/cities/:id Delete City
+     * @apiName DeleteCity
+     * @apiGroup CityGroup
+     * @apiParam {Number} id City ID
+     * @apiSuccess (No Content 204) - No response body
+     */
     public function destroy(int $id)
     {
         $city = City::with('county')->find($id);

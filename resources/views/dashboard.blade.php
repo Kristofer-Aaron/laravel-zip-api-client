@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard – Laravel Zip Api Client</title>
 
-    <!-- Bootstrap 5.3 -->
+    <!-- Bootstrap 5.3 link -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="min-vh-100 d-flex flex-column">
 
+<body class="min-vh-100 d-flex flex-column">
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg border-bottom">
     <div class="container-lg">
@@ -190,10 +190,6 @@
 <style>
     .card.rounded-lg {
         border-radius: 1rem;
-    }
-
-    .hover-shadow {
-    transition: background-color .2s;
     }
 
     /* Light mode hover */

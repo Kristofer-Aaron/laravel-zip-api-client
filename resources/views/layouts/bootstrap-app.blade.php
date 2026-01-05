@@ -30,10 +30,18 @@
                 <span id="theme-toggle-label">Light</span>
             </button>
 
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="btn btn-primary btn-sm">Log out</button>
-            </form>
+            @if (!request()->routeIs('dashboard.*'))
+                <a href="{{ url('/dashboard') }}" class="btn btn-primary btn-sm">
+                    Dashboard
+                </a>
+            @endif
+
+            @if (request()->routeIs('dashboard.*'))
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-primary btn-sm">Log out</button>
+                </form>
+            @endif
         </div>
     </div>
 </nav>

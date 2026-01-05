@@ -9,6 +9,14 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
+/**
+ * User model
+ *
+ * @apiDefine UserModel
+ * @apiSuccess {Number} id User ID
+ * @apiSuccess {String} name User's full name
+ * @apiSuccess {String} email User's email address
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
