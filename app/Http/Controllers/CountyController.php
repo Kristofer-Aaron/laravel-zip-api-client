@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use App\Models\County;
 
 /**
  * @apiDefine CountyGroup Counties
@@ -25,16 +25,7 @@ class CountyController extends Controller
      */
     public function index()
     {
-        $token = auth('sanctum')->token();
-        $apiBase = config('services.api.base_uri');
-        
-        $response = Http::withToken($token)->get($apiBase . '/counties');
-        
-        if ($response->successful()) {
-            return response()->json($response->json(), 200);
-        }
-        
-        return response()->json(['message' => 'Failed to fetch counties'], $response->status());
+        return response()->json(County::all(), 200);
     }
 
     /**
@@ -48,18 +39,13 @@ class CountyController extends Controller
      */
     public function show(int $id)
     {
-        $token = auth('sanctum')->token();
-        $apiBase = config('services.api.base_uri');
-        
-        $response = Http::withToken($token)->get($apiBase . '/counties/' . $id);
-        
-        if ($response->successful()) {
-            return response()->json($response->json(), 200);
-        } elseif ($response->status() === 404) {
+        $county = County::find($id);
+
+        if (!$county) {
             return response()->json(['message' => 'County with id not found'], 404);
         }
-        
-        return response()->json(['message' => 'Failed to fetch county'], $response->status());
+
+        return response()->json($county, 200);
     }
 
     /**
@@ -72,21 +58,12 @@ class CountyController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:counties,name',
         ]);
 
-        $token = auth('sanctum')->token();
-        $apiBase = config('services.api.base_uri');
-        
-        $response = Http::withToken($token)->post($apiBase . '/counties', $data);
-        
-        if ($response->successful()) {
-            return response()->json($response->json(), 201);
-        } elseif ($response->status() === 422) {
-            return response()->json($response->json(), 422);
-        }
-        
-        return response()->json(['message' => 'Failed to create county'], $response->status());
+        $county = County::create($data);
+
+        return response()->json($county, 201);
     }
 
     /**
@@ -99,22 +76,19 @@ class CountyController extends Controller
      */
     public function update(Request $request, int $id)
     {
+        $county = County::find($id);
+
+        if (!$county) {
+            return response()->json(['message' => 'County with id not found'], 404);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
         ]);
 
-        $token = auth('sanctum')->token();
-        $apiBase = config('services.api.base_uri');
-        
-        $response = Http::withToken($token)->put($apiBase . '/counties/' . $id, $data);
-        
-        if ($response->successful()) {
-            return response()->json($response->json(), 200);
-        } elseif ($response->status() === 404) {
-            return response()->json(['message' => 'County with id not found'], 404);
-        }
-        
-        return response()->json(['message' => 'Failed to update county'], $response->status());
+        $county->update($data);
+
+        return response()->json($county, 200);
     }
 
     /**
@@ -126,31 +100,21 @@ class CountyController extends Controller
      */
     public function destroy(int $id)
     {
-        $token = auth('sanctum')->token();
-        $apiBase = config('services.api.base_uri');
-        
-        $response = Http::withToken($token)->delete($apiBase . '/counties/' . $id);
-        
-        if ($response->status() === 204) {
-            return response()->json(null, 204);
-        } elseif ($response->status() === 404) {
+        $county = County::find($id);
+
+        if (!$county) {
             return response()->json(['message' => 'County with id not found'], 404);
         }
-        
-        return response()->json(['message' => 'Failed to delete county'], $response->status());
+
+        $county->delete();
+
+        return response()->json(null, 204);
     }
 
     // Export Counties
     public function export(Request $request)
     {
-        $apiBase = config('services.api.base_uri');
-        $response = Http::get($apiBase . '/counties');
-        $countiesData = collect($response->json());
-
-        $counties = $countiesData->map(function ($county) {
-            $county['cities_count'] = 0; // Placeholder
-            return (object) $county;
-        })->sortBy('name');
+        $counties = County::withCount('cities')->orderBy('name')->get();
 
         $type = $request->input('type', 'csv'); // default CSV
 
@@ -200,21 +164,9 @@ class CountyController extends Controller
      */
     public function webIndex()
     {
-        $token = session('api_token');
-        if (!$token) {
-            return redirect()->route('api.login.form')->with('error', 'Please login to API first');
-        }
-
-        $apiBase = config('services.api.base_uri');
-        $response = Http::withToken($token)->get($apiBase . '/counties');
-        $countiesData = collect($response->json());
-
-        // Add cities_count (assuming API doesn't provide it, or fetch cities and count)
-        // For simplicity, set to 0 or fetch separately
-        $counties = $countiesData->map(function ($county) {
-            $county['cities_count'] = 0; // Placeholder
-            return (object) $county;
-        })->sortBy('name')->paginate(25);
+        $counties = County::withCount('cities')
+            ->orderBy('name')
+            ->paginate(25);
 
         return view('counties-view', [
             'counties' => $counties,
@@ -226,25 +178,15 @@ class CountyController extends Controller
      */
     public function webStore(Request $request)
     {
-        $token = session('api_token');
-        if (!$token) {
-            return redirect()->route('api.login.form')->with('error', 'Please login to API first');
-        }
-
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:counties,name',
         ]);
 
-        $apiBase = config('services.api.base_uri');
-        $response = Http::withToken($token)->post($apiBase . '/counties', $data);
+        County::create($data);
 
-        if ($response->successful()) {
-            return redirect()
-                ->route('counties-view.index')
-                ->with('message', 'County created successfully.');
-        } else {
-            return back()->withErrors(['error' => 'Failed to create county']);
-        }
+        return redirect()
+            ->route('counties-view.index')
+            ->with('message', 'County created successfully.');
     }
 
     /**
@@ -252,20 +194,17 @@ class CountyController extends Controller
      */
     public function webUpdate(Request $request, int $id)
     {
+        $county = County::findOrFail($id);
+
         $data = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:counties,name,' . $id,
         ]);
 
-        $apiBase = config('services.api.base_uri');
-        $response = Http::put($apiBase . '/counties/' . $id, $data);
+        $county->update($data);
 
-        if ($response->successful()) {
-            return redirect()
-                ->route('counties-view.index')
-                ->with('message', 'County updated successfully.');
-        } else {
-            return back()->withErrors(['error' => 'Failed to update county']);
-        }
+        return redirect()
+            ->route('counties-view.index')
+            ->with('message', 'County updated successfully.');
     }
 
     /**
@@ -273,15 +212,11 @@ class CountyController extends Controller
      */
     public function webDestroy(int $id)
     {
-        $apiBase = config('services.api.base_uri');
-        $response = Http::delete($apiBase . '/counties/' . $id);
+        $county = County::findOrFail($id);
+        $county->delete();
 
-        if ($response->successful()) {
-            return redirect()
-                ->route('counties-view.index')
-                ->with('message', 'County deleted successfully.');
-        } else {
-            return back()->withErrors(['error' => 'Failed to delete county']);
-        }
+        return redirect()
+            ->route('counties-view.index')
+            ->with('message', 'County deleted successfully.');
     }
 }

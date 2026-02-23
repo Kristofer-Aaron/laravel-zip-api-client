@@ -23,15 +23,6 @@
                 <span id="theme-toggle-label">Light</span>
             </button>
 
-            @if(session('api_token'))
-                <form method="POST" action="{{ route('api.logout') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-warning btn-sm">Logout API</button>
-                </form>
-            @else
-                <a href="{{ route('api.login.form') }}" class="btn btn-info btn-sm">Login to API</a>
-            @endif
-
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="btn btn-primary btn-sm">Log out</button>
@@ -52,7 +43,7 @@
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <p class="text-body-secondary mb-1">Total Cities</p>
-                            <h3 class="fw-bold">0</h3> <!-- Fetch from API if needed -->
+                            <h3 class="fw-bold">{{ \App\Models\City::count() }}</h3>
                         </div>
                         <div class="rounded-lg bg-subtle p-3">
                             <i class="bi bi-building" style="font-size: 1.5rem; color:#0d6efd;"></i>
@@ -67,7 +58,7 @@
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <p class="text-body-secondary mb-1">Total Counties</p>
-                            <h3 class="fw-bold">0</h3> <!-- Fetch from API if needed -->
+                            <h3 class="fw-bold">{{ \App\Models\County::count() }}</h3>
                         </div>
                         <div class="rounded-lg bg-subtle p-3">
                             <i class="bi bi-map" style="font-size: 1.5rem; color:#198754;"></i>
@@ -82,7 +73,7 @@
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <p class="text-body-secondary mb-1">Total Users</p>
-                            <h3 class="fw-bold">0</h3> <!-- Fetch from API if needed -->
+                            <h3 class="fw-bold">{{ \App\Models\User::count() }}</h3>
                         </div>
                         <div class="rounded-lg bg-subtle p-3">
                             <i class="bi bi-people" style="font-size: 1.5rem; color:#0dcaf0;"></i>
@@ -142,7 +133,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ([] as $city)
+                            @forelse (\App\Models\City::latest()->limit(5)->get() as $city)
                                 <tr>
                                     <td><code class="bg-light px-2 py-1 rounded">{{ $city->zip }}</code></td>
                                     <td>{{ $city->name }}</td>
