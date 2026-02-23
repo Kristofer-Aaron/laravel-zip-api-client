@@ -76,9 +76,7 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": [
-                "laravel/fortify"
-            ]
+            "dont-discover": []
         }
     },
     "config": {

@@ -59,7 +59,7 @@
             <div class="col-md-4">
                 <div class="card shadow-sm p-4 rounded bg-primary-subtle">
                     <div class="display-4 fw-bold text-primary mb-2">
-                        0
+                        {{ \App\Models\City::count() }}
                     </div>
                     <p class="text-body-secondary fw-medium mb-0">
                         Cities in Database
@@ -71,7 +71,7 @@
             <div class="col-md-4">
                 <div class="card shadow-sm p-4 rounded bg-success-subtle">
                     <div class="display-4 fw-bold text-success mb-2">
-                        0
+                        {{ \App\Models\County::count() }}
                     </div>
                     <p class="text-body-secondary fw-medium mb-0">
                         Counties in Database
@@ -83,7 +83,7 @@
             <div class="col-md-4">
                 <div class="card shadow-sm p-4 rounded bg-info-subtle">
                     <div class="display-4 fw-bold text-info mb-2">
-                        0
+                        {{ \App\Models\User::count() }}
                     </div>
                     <p class="text-body-secondary fw-medium mb-0">
                         Registered Users
