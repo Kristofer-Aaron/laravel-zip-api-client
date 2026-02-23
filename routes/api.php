@@ -9,7 +9,8 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::name('api.')->group(function () {
+// API routes - proxy to backend
+Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('cities', CityController::class);
     Route::apiResource('counties', CountyController::class);
 });

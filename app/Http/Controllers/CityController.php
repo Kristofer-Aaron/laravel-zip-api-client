@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\City;
-use App\Models\County;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 // PDF export dependencies
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -16,78 +15,89 @@ use Barryvdh\DomPDF\Facade\Pdf;
  */
 class CityController extends Controller
 {
-    // -------------------
-    // API Methods (JSON)
-    // -------------------
+    /* =====================================================
+     | API METHODS (JSON)
+     |=====================================================*/
+
     /**
      * @api {get} /api/cities List Cities
      * @apiName GetCities
      * @apiGroup CityGroup
      * @apiSuccess {Object[]} cities List of cities
-     * @apiSuccess {Number} cities.id City unique ID
-     * @apiSuccess {String} cities.zip Postal code
+     * @apiSuccess {Number} cities.id City ID
+     * @apiSuccess {String} cities.zip City ZIP code
      * @apiSuccess {String} cities.name City name
-     * @apiSuccess {Object} cities.county Associated county object
-     * @apiSuccessExample {json} Success-Response:
-     * HTTP/1.1 200 OK
-     * [
-     *   {"id":1,"zip":"1000","name":"Sample","county":{...}}
-     * ]
+     * @apiSuccess {Object} cities.county County object
      */
     public function index()
     {
-        return response()->json(City::with('county')->get(), 200);
+        $token = auth('sanctum')->token();
+        $apiBase = config('services.api.base_uri');
+        
+        $response = Http::withToken($token)->get($apiBase . '/cities');
+        
+        if ($response->successful()) {
+            return response()->json($response->json(), 200);
+        }
+        
+        return response()->json(['message' => 'Failed to fetch cities'], $response->status());
     }
 
     /**
      * @api {get} /api/cities/:id Get City
      * @apiName GetCity
      * @apiGroup CityGroup
-     * @apiParam {Number} id City's unique ID.
-     * @apiSuccess {Number} id City unique ID
-     * @apiSuccess {String} zip Postal code
+     * @apiParam {Number} id City ID
+     * @apiSuccess {Number} id City ID
+     * @apiSuccess {String} zip City ZIP code
      * @apiSuccess {String} name City name
-     * @apiSuccess {Object} county Associated county
-     * @apiError {String} message Error message when not found
+     * @apiError {String} message Error when not found
      */
     public function show(int $id)
     {
-        $city = City::with('county')->find($id);
-        if (!$city) {
+        $token = auth('sanctum')->token();
+        $apiBase = config('services.api.base_uri');
+        
+        $response = Http::withToken($token)->get($apiBase . '/cities/' . $id);
+        
+        if ($response->successful()) {
+            return response()->json($response->json(), 200);
+        } elseif ($response->status() === 404) {
             return response()->json(['message' => 'City with id not found'], 404);
         }
-        return response()->json($city, 200);
+        
+        return response()->json(['message' => 'Failed to fetch city'], $response->status());
     }
 
     /**
      * @api {post} /api/cities Create City
      * @apiName CreateCity
      * @apiGroup CityGroup
-     * @apiParam {String} zip Postal code (4 digits)
+     * @apiParam {String} zip City ZIP code
      * @apiParam {String} name City name
-     * @apiParam {String} county County name (will be created if missing)
+     * @apiParam {Number} county_id County ID
      * @apiSuccess (Created 201) {Number} id Created city ID
-     * @apiSuccessExample {json} Created-Response:
-     * HTTP/1.1 201 Created
-     * {"id":123,"zip":"1000","name":"New City","county":{...}}
      */
     public function store(Request $request)
     {
         $data = $request->validate([
             'zip' => 'required|digits:4',
             'name' => 'required|string|max:255',
-            'county' => 'required|string|max:255',
+            'county_id' => 'required|integer',
         ]);
 
-        $county = County::firstOrCreate(['name' => $data['county']]);
-
-        $city = City::create([
-            'zip' => $data['zip'],
-            'name' => $data['name'],
-            'county_id' => $county->id,
-        ]);
-
-        return response()->json($city->load('county'), 201);
+        $token = auth('sanctum')->token();
+        $apiBase = config('services.api.base_uri');
+        
+        $response = Http::withToken($token)->post($apiBase . '/cities', $data);
+        
+        if ($response->successful()) {
+            return response()->json($response->json(), 201);
+        } elseif ($response->status() === 422) {
+            return response()->json($response->json(), 422);
+        }
+        
+        return response()->json(['message' => 'Failed to create city'], $response->status());
     }
 
     /**
@@ -95,33 +105,31 @@ class CityController extends Controller
      * @apiName UpdateCity
      * @apiGroup CityGroup
      * @apiParam {Number} id City ID
-     * @apiParam {String} zip Postal code (4 digits)
+     * @apiParam {String} zip City ZIP code
      * @apiParam {String} name City name
-     * @apiParam {String} county County name
+     * @apiParam {Number} county_id County ID
      * @apiSuccess {Object} city Updated city object
      */
     public function update(Request $request, int $id)
     {
-        $city = City::with('county')->find($id);
-        if (!$city) {
-            return response()->json(['message' => 'City with id not found'], 404);
-        }
-
         $data = $request->validate([
             'zip' => 'required|digits:4',
             'name' => 'required|string|max:255',
-            'county' => 'required|string|max:255',
+            'county_id' => 'required|integer',
         ]);
 
-        $county = County::firstOrCreate(['name' => $data['county']]);
-
-        $city->update([
-            'zip' => $data['zip'],
-            'name' => $data['name'],
-            'county_id' => $county->id,
-        ]);
-
-        return response()->json($city->load('county'), 200);
+        $token = auth('sanctum')->token();
+        $apiBase = config('services.api.base_uri');
+        
+        $response = Http::withToken($token)->put($apiBase . '/cities/' . $id, $data);
+        
+        if ($response->successful()) {
+            return response()->json($response->json(), 200);
+        } elseif ($response->status() === 404) {
+            return response()->json(['message' => 'City with id not found'], 404);
+        }
+        
+        return response()->json(['message' => 'Failed to update city'], $response->status());
     }
 
     /**
@@ -133,37 +141,58 @@ class CityController extends Controller
      */
     public function destroy(int $id)
     {
-        $city = City::with('county')->find($id);
-        if (!$city) {
+        $token = auth('sanctum')->token();
+        $apiBase = config('services.api.base_uri');
+        
+        $response = Http::withToken($token)->delete($apiBase . '/cities/' . $id);
+        
+        if ($response->status() === 204) {
+            return response()->json(null, 204);
+        } elseif ($response->status() === 404) {
             return response()->json(['message' => 'City with id not found'], 404);
         }
-
-        $city->delete();
-        return response()->json(null, 204);
+        
+        return response()->json(['message' => 'Failed to delete city'], $response->status());
     }
+
+    /* =====================================================
+     | EXPORT METHODS
+     |=====================================================*/
 
     // Controller
     public function export(Request $request)
     {
-        $query = City::with('county');
+        $token = session('api_token');
+        if (!$token) {
+            return redirect()->route('api.login.form')->with('error', 'Please login to API first');
+        }
+
+        $apiBase = config('services.api.base_uri');
+
+        $citiesResponse = Http::withToken($token)->get($apiBase . '/cities');
+        $citiesData = collect($citiesResponse->json());
+
+        $query = $citiesData;
 
         // Filters
         if ($search = $request->input('search')) {
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('zip', 'like', "%{$search}%");
+            $query = $query->filter(function ($city) use ($search) {
+                return str_contains(strtolower($city['name']), strtolower($search)) ||
+                       str_contains($city['zip'], $search);
             });
         }
 
         if ($countyId = $request->input('county_filter')) {
-            $query->where('county_id', $countyId);
+            $query = $query->where('county_id', $countyId);
         }
 
         if ($letter = $request->input('letter')) {
-            $query->where('name', 'like', strtoupper($letter) . '%');
+            $query = $query->filter(function ($city) use ($letter) {
+                return str_starts_with(strtolower($city['name']), strtolower($letter));
+            });
         }
 
-        $cities = $query->orderBy('name')->get();
+        $cities = $query->sortBy('name');
 
         // Decide export type
         if ($request->input('type') === 'pdf') {
@@ -188,7 +217,7 @@ class CityController extends Controller
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
             fputcsv($handle, ['Zip', 'Name', 'County']); // Header row
             foreach ($cities as $city) {
-                fputcsv($handle, [$city->zip, $city->name, $city->county->name]);
+                fputcsv($handle, [$city['zip'], $city['name'], $city['county']['name']]);
             }
             fclose($handle);
         };
@@ -198,10 +227,11 @@ class CityController extends Controller
 
     private function exportPDF($cities)
     {
-        // Make sure $cities is a collection
-        if ($cities instanceof \Illuminate\Database\Eloquent\Builder) {
-            $cities = $cities->get();
-        }
+        // Convert to objects for view compatibility
+        $cities = $cities->map(function ($city) {
+            $city['county'] = (object) $city['county'];
+            return (object) $city;
+        });
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.cities-pdf', compact('cities'));
         return $pdf->download('cities.pdf');
@@ -214,28 +244,46 @@ class CityController extends Controller
     // Index page with filters
     public function webIndex(Request $request)
     {
-        $counties = County::orderBy('name')->get();
-        $query = City::with('county');
+        $apiBase = config('services.api.base_uri');
+        $token = session('api_token');
+
+        if (!$token) {
+            return redirect()->route('api.login.form')->with('error', 'Please login to API first');
+        }
+
+        $countiesResponse = Http::withToken($token)->get($apiBase . '/counties');
+        $counties = collect($countiesResponse->json())->sortBy('name')->values();
+
+        $citiesResponse = Http::withToken($token)->get($apiBase . '/cities');
+        $citiesData = collect($citiesResponse->json());
+
+        $query = $citiesData;
 
         // Search filter
         if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('zip', 'like', "%{$search}%");
+            $query = $query->filter(function ($city) use ($search) {
+                return str_contains(strtolower($city['name']), strtolower($search)) ||
+                       str_contains($city['zip'], $search);
             });
         }
 
         // County filter
         if ($countyId = $request->input('county_filter')) {
-            $query->where('county_id', $countyId);
+            $query = $query->where('county_id', $countyId);
         }
 
         // Alphabetical filter
         if ($letter = $request->input('letter')) {
-            $query->where('name', 'like', strtoupper($letter) . '%');
+            $query = $query->filter(function ($city) use ($letter) {
+                return str_starts_with(strtolower($city['name']), strtolower($letter));
+            });
         }
 
-        $cities = $query->orderBy('name')->simplePaginate(25)->withQueryString();
+        $cities = $query->sortBy('name')->paginate(25);
+        $cities->getCollection()->transform(function ($city) {
+            $city['county'] = (object) $city['county'];
+            return (object) $city;
+        });
 
         return view('cities-view', [
             'cities' => $cities,
@@ -246,43 +294,56 @@ class CityController extends Controller
     // Web Create (from form)
     public function webStore(Request $request)
     {
+        $token = session('api_token');
+        if (!$token) {
+            return redirect()->route('api.login.form')->with('error', 'Please login to API first');
+        }
+
         $data = $request->validate([
             'zip' => 'required|digits:4',
             'name' => 'required|string|max:255',
-            'county_id' => 'required|exists:counties,id',
+            'county_id' => 'required|integer',
         ]);
 
-        City::create([
-            'zip' => $data['zip'],
-            'name' => $data['name'],
-            'county_id' => $data['county_id'],
-        ]);
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->post($apiBase . '/cities', $data);
 
-        return redirect()->route('cities-view.index')->with('message', 'City created successfully');
+        if ($response->successful()) {
+            return redirect()->route('cities-view.index')->with('message', 'City created successfully');
+        } else {
+            return back()->withErrors(['error' => 'Failed to create city']);
+        }
     }
 
     // Web Update (from form)
     public function webUpdate(Request $request, $id)
     {
-        $city = City::findOrFail($id);
-
         $data = $request->validate([
             'zip' => 'required|digits:4',
             'name' => 'required|string|max:255',
-            'county_id' => 'required|exists:counties,id',
+            'county_id' => 'required|integer',
         ]);
 
-        $city->update($data);
+        $apiBase = config('services.api.base_uri');
+        $response = Http::put($apiBase . '/cities/' . $id, $data);
 
-        return redirect()->route('cities-view.index')->with('message', 'City updated successfully');
+        if ($response->successful()) {
+            return redirect()->route('cities-view.index')->with('message', 'City updated successfully');
+        } else {
+            return back()->withErrors(['error' => 'Failed to update city']);
+        }
     }
 
     // Web Destroy
     public function webDestroy($id)
     {
-        $city = City::findOrFail($id);
-        $city->delete();
+        $apiBase = config('services.api.base_uri');
+        $response = Http::delete($apiBase . '/cities/' . $id);
 
-        return redirect()->route('cities-view.index')->with('message', 'City deleted successfully');
+        if ($response->successful()) {
+            return redirect()->route('cities-view.index')->with('message', 'City deleted successfully');
+        } else {
+            return back()->withErrors(['error' => 'Failed to delete city']);
+        }
     }
 }

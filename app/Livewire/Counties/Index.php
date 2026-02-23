@@ -4,7 +4,7 @@ namespace App\Livewire\Counties;
 
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\County;
+use Illuminate\Support\Facades\Http;
 
 class Index extends Component
 {
@@ -33,15 +33,31 @@ class Index extends Component
 
     public function render()
     {
-        $query = County::query();
-
-        if ($this->search) {
-            $query->where('name', 'like', '%' . $this->search . '%');
+        $token = session('api_token');
+        if (!$token) {
+            return view('livewire.counties.index', [
+                'counties' => collect(),
+            ])->with('error', 'Please login to API first');
         }
 
-        $query->orderBy($this->sort, $this->direction);
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->get($apiBase . '/counties');
+        $countiesData = collect($response->json());
 
-        $counties = $query->withCount('cities')->paginate(15);
+        $query = $countiesData;
+
+        if ($this->search) {
+            $query = $query->filter(function ($county) {
+                return str_contains(strtolower($county['name']), strtolower($this->search));
+            });
+        }
+
+        $query = $query->sortBy($this->sort, SORT_REGULAR, $this->direction === 'desc');
+
+        $counties = $query->map(function ($county) {
+            $county['cities_count'] = 0; // Placeholder
+            return (object) $county;
+        })->paginate(15);
 
         return view('livewire.counties.index', [
             'counties' => $counties,
@@ -72,12 +88,22 @@ class Index extends Component
 
     public function openEditModal($id)
     {
-        $county = County::findOrFail($id);
-        $this->editingId = $id;
-        $this->form = [
-            'name' => $county->name,
-        ];
-        $this->showEditModal = true;
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
+            return;
+        }
+
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->get($apiBase . '/counties/' . $id);
+        if ($response->successful()) {
+            $county = $response->json();
+            $this->editingId = $id;
+            $this->form = [
+                'name' => $county['name'],
+            ];
+            $this->showEditModal = true;
+        }
     }
 
     public function closeEditModal()
@@ -88,44 +114,66 @@ class Index extends Component
 
     public function save()
     {
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
+            return;
+        }
+
         $this->validate([
-            'form.name' => 'required|string|max:255|unique:counties,name',
+            'form.name' => 'required|string|max:255',
         ]);
 
-        County::create([
-            'name' => $this->form['name'],
-        ]);
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->post($apiBase . '/counties', $this->form);
 
-        $this->closeCreateModal();
-        session()->flash('message', 'County created successfully!');
+        if ($response->successful()) {
+            $this->closeCreateModal();
+            session()->flash('message', 'County created successfully!');
+        } else {
+            session()->flash('error', 'Failed to create county');
+        }
     }
 
     public function update()
     {
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
+            return;
+        }
+
         $this->validate([
-            'form.name' => 'required|string|max:255|unique:counties,name,' . $this->editingId,
+            'form.name' => 'required|string|max:255',
         ]);
 
-        $county = County::findOrFail($this->editingId);
-        $county->update([
-            'name' => $this->form['name'],
-        ]);
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->put($apiBase . '/counties/' . $this->editingId, $this->form);
 
-        $this->closeEditModal();
-        session()->flash('message', 'County updated successfully!');
+        if ($response->successful()) {
+            $this->closeEditModal();
+            session()->flash('message', 'County updated successfully!');
+        } else {
+            session()->flash('error', 'Failed to update county');
+        }
     }
 
     public function delete($id)
     {
-        $county = County::findOrFail($id);
-        
-        if ($county->cities()->count() > 0) {
-            session()->flash('error', 'Cannot delete county with associated cities!');
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
             return;
         }
 
-        $county->delete();
-        session()->flash('message', 'County deleted successfully!');
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->delete($apiBase . '/counties/' . $id);
+
+        if ($response->successful()) {
+            session()->flash('message', 'County deleted successfully!');
+        } else {
+            session()->flash('error', 'Failed to delete county');
+        }
     }
 
     private function resetForm()

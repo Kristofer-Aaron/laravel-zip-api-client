@@ -4,8 +4,7 @@ namespace App\Livewire\Cities;
 
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\City;
-use App\Models\County;
+use Illuminate\Support\Facades\Http;
 
 class Index extends Component
 {
@@ -48,30 +47,52 @@ class Index extends Component
 
     public function render()
     {
-        $query = City::query();
+        $token = session('api_token');
+        if (!$token) {
+            return view('livewire.cities.index', [
+                'cities' => collect(),
+                'counties' => collect(),
+            ])->with('error', 'Please login to API first');
+        }
+
+        $apiBase = config('services.api.base_uri');
+
+        $citiesResponse = Http::withToken($token)->get($apiBase . '/cities');
+        $citiesData = collect($citiesResponse->json());
+
+        $countiesResponse = Http::withToken($token)->get($apiBase . '/counties');
+        $countiesData = collect($countiesResponse->json());
+
+        $query = $citiesData;
 
         if ($this->search) {
-            $query->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('zip', 'like', '%' . $this->search . '%');
-        }
-
-        if ($this->county_filter) {
-            $query->where('county_id', $this->county_filter);
-        }
-
-        // Filter by starting letters (Hungarian alphabet digraphs supported)
-        if (!empty($this->selectedLetters)) {
-            $query->where(function ($q) {
-                foreach ($this->selectedLetters as $letter) {
-                    $q->orWhere('name', 'like', $letter . '%');
-                }
+            $query = $query->filter(function ($city) {
+                return str_contains(strtolower($city['name']), strtolower($this->search)) ||
+                       str_contains($city['zip'], $this->search);
             });
         }
 
-        $query->orderBy($this->sort, $this->direction);
+        if ($this->county_filter) {
+            $query = $query->where('county_id', $this->county_filter);
+        }
 
-        $cities = $query->with('county')->paginate(15);
-        $counties = County::orderBy('name')->get();
+        // Filter by starting letters
+        if (!empty($this->selectedLetters)) {
+            $query = $query->filter(function ($city) {
+                foreach ($this->selectedLetters as $letter) {
+                    if (str_starts_with(strtolower($city['name']), strtolower($letter))) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        // Sort
+        $query = $query->sortBy($this->sort, SORT_REGULAR, $this->direction === 'desc');
+
+        $cities = $query->paginate(15);
+        $counties = $countiesData->sortBy('name');
 
         return view('livewire.cities.index', [
             'cities' => $cities,
@@ -103,14 +124,24 @@ class Index extends Component
 
     public function openEditModal($id)
     {
-        $city = City::findOrFail($id);
-        $this->editingId = $id;
-        $this->form = [
-            'zip' => $city->zip,
-            'name' => $city->name,
-            'county_id' => $city->county_id,
-        ];
-        $this->showEditModal = true;
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
+            return;
+        }
+
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->get($apiBase . '/cities/' . $id);
+        if ($response->successful()) {
+            $city = $response->json();
+            $this->editingId = $id;
+            $this->form = [
+                'zip' => $city['zip'],
+                'name' => $city['name'],
+                'county_id' => $city['county_id'],
+            ];
+            $this->showEditModal = true;
+        }
     }
 
     public function closeEditModal()
@@ -121,45 +152,70 @@ class Index extends Component
 
     public function save()
     {
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
+            return;
+        }
+
         $this->validate([
             'form.zip' => 'required|string|max:10',
             'form.name' => 'required|string|max:255',
-            'form.county_id' => 'required|exists:counties,id',
+            'form.county_id' => 'required|integer',
         ]);
 
-        City::create([
-            'zip' => $this->form['zip'],
-            'name' => $this->form['name'],
-            'county_id' => $this->form['county_id'],
-        ]);
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->post($apiBase . '/cities', $this->form);
 
-        $this->closeCreateModal();
-        session()->flash('message', 'City created successfully!');
+        if ($response->successful()) {
+            $this->closeCreateModal();
+            session()->flash('message', 'City created successfully!');
+        } else {
+            session()->flash('error', 'Failed to create city');
+        }
     }
 
     public function update()
     {
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
+            return;
+        }
+
         $this->validate([
             'form.zip' => 'required|string|max:10',
             'form.name' => 'required|string|max:255',
-            'form.county_id' => 'required|exists:counties,id',
+            'form.county_id' => 'required|integer',
         ]);
 
-        $city = City::findOrFail($this->editingId);
-        $city->update([
-            'zip' => $this->form['zip'],
-            'name' => $this->form['name'],
-            'county_id' => $this->form['county_id'],
-        ]);
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->put($apiBase . '/cities/' . $this->editingId, $this->form);
 
-        $this->closeEditModal();
-        session()->flash('message', 'City updated successfully!');
+        if ($response->successful()) {
+            $this->closeEditModal();
+            session()->flash('message', 'City updated successfully!');
+        } else {
+            session()->flash('error', 'Failed to update city');
+        }
     }
 
     public function delete($id)
     {
-        City::findOrFail($id)->delete();
-        session()->flash('message', 'City deleted successfully!');
+        $token = session('api_token');
+        if (!$token) {
+            session()->flash('error', 'Please login to API first');
+            return;
+        }
+
+        $apiBase = config('services.api.base_uri');
+        $response = Http::withToken($token)->delete($apiBase . '/cities/' . $id);
+
+        if ($response->successful()) {
+            session()->flash('message', 'City deleted successfully!');
+        } else {
+            session()->flash('error', 'Failed to delete city');
+        }
     }
 
     private function resetForm()
